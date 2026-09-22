@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>手機傾斜＋藍牙語音測試</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,"Noto Sans TC",sans-serif;background:#f4f7fb;color:#172033;text-align:center}
+.wrap{max-width:520px;margin:auto;padding:24px 18px}h1{font-size:25px;margin:8px 0}.hint{color:#667085;line-height:1.6;margin-bottom:18px}
+button{border:0;border-radius:14px;padding:14px 18px;margin:5px;font-size:17px;font-weight:700;background:#2563eb;color:white}
+#status{font-size:34px;font-weight:800;background:white;border-radius:22px;padding:30px 12px;margin:18px 0;box-shadow:0 6px 20px #00000012}
+.neutral{color:#344054}.left{color:#087f5b}.right{color:#d9480f}
+.box{background:white;border-radius:18px;padding:17px;margin-top:14px;text-align:left}.row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #eee}
+</style></head>
+<body><div class="wrap">
+<h1>📱 傾斜方向＋藍牙語音</h1>
+<div class="hint">先將手機連接藍牙耳機／喇叭，再按「測試語音」。</div>
+<button id="voice">🔊 測試語音</button><button id="start">📱 開始感測</button>
+<div id="status" class="neutral">等待測試</div>
+<div class="box">
+<div class="row"><span>X 軸</span><b id="x">0.00</b></div>
+<div class="row"><span>Y 軸</span><b id="y">0.00</b></div>
+<div class="row"><span>Z 軸</span><b id="z">0.00</b></div></div>
+<div class="box"><b>判斷規則</b><br><br>
+X ＞ 3 → ⬅️ 左轉 → 語音「左轉」<br>
+X ＜ -3 → ➡️ 右轉 → 語音「右轉」<br>
+-3 ≤ X ≤ 3 → ⬆️ 保持</div>
+<div class="box" id="audioState">🔊 語音：尚未測試</div>
+</div>
+<script>
+const statusEl=document.getElementById("status"),xEl=document.getElementById("x"),yEl=document.getElementById("y"),zEl=document.getElementById("z"),startBtn=document.getElementById("start"),audioState=document.getElementById("audioState");
+let lastCommand="",lastSpeechTime=0;
+function speak(text){
+ if(!("speechSynthesis" in window)){audioState.textContent="❌ 瀏覽器不支援語音";return;}
+ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text);
+ u.lang="zh-TW";u.rate=.9;u.pitch=1;u.volume=1;
+ u.onstart=()=>audioState.textContent="🔊 播放：「"+text+"」";
+ u.onend=()=>audioState.textContent="✅ 播放完成：「"+text+"」";
+ u.onerror=()=>audioState.textContent="❌ 播放失敗，請檢查手機音量與藍牙輸出";
+ speechSynthesis.speak(u);
+}
+function command(text,css){
+ statusEl.textContent=text;statusEl.className=css;const now=Date.now();
+ if(text!==lastCommand || now-lastSpeechTime>800){lastCommand=text;lastSpeechTime=now;speak(text.replace("⬅️ ","").replace("➡️ ",""));}
+}
+function handleMotion(e){
+ const a=e.accelerationIncludingGravity||e.acceleration;if(!a)return;
+ const x=a.x||0,y=a.y||0,z=a.z||0;xEl.textContent=x.toFixed(2);yEl.textContent=y.toFixed(2);zEl.textContent=z.toFixed(2);
+ if(x>3)command("⬅️ 左轉","left");else if(x<-3)command("➡️ 右轉","right");else{statusEl.textContent="⬆️ 保持";statusEl.className="neutral";}
+}
+async function startSensor(){
+ try{
+  if(typeof DeviceMotionEvent!=="undefined"&&typeof DeviceMotionEvent.requestPermission==="function"){
+   const p=await DeviceMotionEvent.requestPermission();if(p!=="granted"){statusEl.textContent="未取得感測器權限";return;}
+  }
+  window.addEventListener("devicemotion",handleMotion);statusEl.textContent="感測中…請左右傾斜手機";startBtn.textContent="感測中";startBtn.disabled=true;
+ }catch(e){statusEl.textContent="無法啟用感測器";}
+}
+document.getElementById("voice").addEventListener("click",()=>speak("藍牙語音測試，左轉"));
+startBtn.addEventListener("click",startSensor);
+</script></body></html>

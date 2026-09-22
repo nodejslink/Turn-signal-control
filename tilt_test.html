@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>手機傾斜方向測試</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,"Noto Sans TC",sans-serif;background:#f4f7fb;color:#172033;text-align:center}
+  .wrap{max-width:520px;margin:auto;padding:28px 20px}
+  h1{font-size:26px;margin:10px 0 8px}
+  .hint{color:#667085;margin-bottom:22px}
+  #status{font-size:34px;font-weight:800;background:white;border-radius:22px;padding:30px 15px;margin:18px 0;box-shadow:0 6px 20px #00000012}
+  .neutral{color:#344054}.left{color:#087f5b}.right{color:#d9480f}
+  .box{background:white;border-radius:18px;padding:18px;margin-top:15px;text-align:left}
+  .row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #eee}
+  .row:last-child{border-bottom:0}
+  button{border:0;border-radius:14px;padding:15px 22px;font-size:17px;font-weight:700;background:#2563eb;color:white}
+  button:active{transform:scale(.98)}
+  small{color:#667085}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📱 手機傾斜方向測試</h1>
+  <div class="hint">先允許手機使用「動作與方向」感測器</div>
+
+  <button id="start">開始感測</button>
+
+  <div id="status" class="neutral">等待測試</div>
+
+  <div class="box">
+    <div class="row"><span>X 軸</span><b id="x">0.00</b></div>
+    <div class="row"><span>Y 軸</span><b id="y">0.00</b></div>
+    <div class="row"><span>Z 軸</span><b id="z">0.00</b></div>
+  </div>
+
+  <div class="box">
+    <b>目前判斷規則</b><br><br>
+    X ＞ 3 → <b>左轉</b><br>
+    X ＜ -3 → <b>右轉</b><br>
+    -3 ≤ X ≤ 3 → <b>保持</b>
+  </div>
+</div>
+
+<script>
+const statusEl = document.getElementById("status");
+const xEl = document.getElementById("x");
+const yEl = document.getElementById("y");
+const zEl = document.getElementById("z");
+const startBtn = document.getElementById("start");
+
+function show(x,y,z){
+  xEl.textContent = x.toFixed(2);
+  yEl.textContent = y.toFixed(2);
+  zEl.textContent = z.toFixed(2);
+
+  statusEl.className = "neutral";
+  if (x > 3) {
+    statusEl.textContent = "⬅️ 左轉";
+    statusEl.className = "left";
+  } else if (x < -3) {
+    statusEl.textContent = "➡️ 右轉";
+    statusEl.className = "right";
+  } else {
+    statusEl.textContent = "⬆️ 保持";
+  }
+}
+
+function handleMotion(e){
+  const a = e.accelerationIncludingGravity || e.acceleration;
+  if (!a) return;
+  show(a.x || 0, a.y || 0, a.z || 0);
+}
+
+async function startSensor(){
+  try{
+    // iPhone/iPad Safari 需要使用者點擊後取得權限
+    if (typeof DeviceMotionEvent !== "undefined" &&
+        typeof DeviceMotionEvent.requestPermission === "function") {
+      const permission = await DeviceMotionEvent.requestPermission();
+      if (permission !== "granted") {
+        statusEl.textContent = "未取得感測器權限";
+        return;
+      }
+    }
+    window.addEventListener("devicemotion", handleMotion);
+    statusEl.textContent = "感測中…請左右傾斜手機";
+    startBtn.textContent = "感測中";
+    startBtn.disabled = true;
+  }catch(err){
+    statusEl.textContent = "無法啟用感測器";
+    console.error(err);
+  }
+}
+
+startBtn.addEventListener("click", startSensor);
+</script>
+</body>
+</html>
